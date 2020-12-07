@@ -10,6 +10,7 @@ from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 from sklearn.neighbors import KNeighborsClassifier
 from collections import defaultdict
+import pandas as pd
 
 # constants
 imgHeight = 256
@@ -57,11 +58,9 @@ plt.legend()
 # show the plot
 plt.show()
 
-
 # literal 6: Classification
 # transform train data to PCA, principle axis
 pca_imgVectorsTrain = pca.transform(np.array(imgVectorsTrain))
-print('pca_imgVectorsTrain ', pca_imgVectorsTrain)
 typeDist = 2  # euclidean
 k = 8  # number of neighbours
 # build and train model that uses euclidean distance
@@ -101,22 +100,47 @@ for key, val in resultDict.items():
 with open(r'data\results\categories.txt', 'w', encoding="utf-8") as f:
     f.write(strResult)
 
+
+# find best k for knn classification
+typeDist = 2  # euclidean
+knnTestAcc = []
+for kValue in range(2, 20):
+    # build and train model that uses euclidean distance
+    clfTest = KNeighborsClassifier(n_neighbors=kValue, p=typeDist)
+    clfTest.fit(pca_imgVectorsTrain, labelsTrain)
+    # predicted labels
+    pred_labelsKnn = clfTest.predict(pca_imgVectorsTest)
+    knnTestAcc.append(metrics.accuracy_score(labelsTest, pred_labelsKnn))
+# plot best k
+plt.figure('K vs Accuracy')
+plt.subplot(111)
+plt.plot(range(2, 20), knnTestAcc, marker='.')
+plt.xlabel('K value')
+plt.ylabel('Accuracy')
+plt.show()
+
+
 # literal 5: Print eigen vector matrix!
 with open(r'data\results\eigenVectMatrix.txt', 'w', encoding="utf-8") as f:
     eigenVectMatrix = pca.components_
+    pdEigenVectMatrix = pd.DataFrame(eigenVectMatrix.transpose())
     f.write('Eigen Vector Matrix\n\n')
-    f.write(str(eigenVectMatrix.transpose()) + '\n')
+    f.write(str(pdEigenVectMatrix) + '\n')
     nRows, nCols = pca.components_.transpose().shape
-    f.write(f'Shape is {nRows} {nCols}')
+    pcColNames = []
+    for colNum in range(len(eigenVectMatrix)):
+        pcColNames.append(f'PC{colNum}')
 
 # literal 3: accumulated variance for chosen eigen vectors in 2) literal
 dictAccVariance = {}
 pcaVariance = pca.explained_variance_ratio_
 countVar = 0
 accVariance = 0
+accVarianceArr = []
 for var in pcaVariance:
     countVar += 1
     accVariance += var
+    accVarianceArr.append(accVariance)
     dictAccVariance[f'PC-{countVar}'] = accVariance
 # print results
 strAccVariance = 'Accumulated variance for selected Principle Components\n\n'
@@ -124,6 +148,14 @@ for k, v in dictAccVariance.items():
     strAccVariance += f'{k} -> {v}\n'
 with open(r'data\results\AccVariance.txt', 'w', encoding="utf-8") as f:
     f.write(strAccVariance)
+# plot accumulated variance
+plt.figure('Accumulated variance vs components')
+plt.subplot(111)
+plt.plot(range(1, nComp+1), accVarianceArr, marker='.')
+plt.hlines(0.95, 0, nComp, colors='r')
+plt.xlabel('Acc. Variance')
+plt.ylabel('Number of Components')
+plt.show()
 
 # literal 1: Graph the eigen face of the mean of the initial matrix, before applyin PCA
 meanVect = pca.mean_
@@ -146,15 +178,3 @@ for i in range(graphRows * graphCols):
     plt.xticks(())
     plt.yticks(())
 plt.show()
-
-# test printings
-print('0\t', pca.components_)
-print('1\t', pca.components_.shape)
-print('2\t', pca.explained_variance_)
-print('3\t', pca.explained_variance_ratio_,
-      np.sum(pca.explained_variance_ratio_))
-print('4\t', pca.singular_values_)
-print('5\t', pca.mean_)
-print('6\t', pca.n_components_)
-print('7\t', pca.n_features_)
-print('8\t', pca.noise_variance_)
