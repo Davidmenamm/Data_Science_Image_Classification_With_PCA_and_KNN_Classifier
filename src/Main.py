@@ -11,6 +11,10 @@ import matplotlib.pyplot as plt
 from sklearn.neighbors import KNeighborsClassifier
 from collections import defaultdict
 
+# constants
+imgHeight = 256
+imgWidth = 256
+
 # Build training set and training labels
 # Labels are based on the persons name, first letter of the picture file
 labelsTrain = []
@@ -36,14 +40,28 @@ for filepath in glob.glob(os.path.join(r'data\train_dataset', '*.jpg')):
     # width, height = PIL_img.size
     imgVectorsTrain.append(np.array(PIL_img).flatten().tolist())
 
-# run PCA
-nComp = 78
+# RUN PCA
+nComp = 80
 pca = PCA(n_components=nComp, whiten=True).fit(np.array(imgVectorsTrain))
 
-# transform train data to PCA, principle axis
-pca_imgVectorsTrain = pca.transform(np.array(imgVectorsTrain))
+# literal 2: Scree Plot to see ideal number of components
+# corresponding eigen values
+plt.figure('Scree Plot')
+eVals = np.square(pca.singular_values_)
+plt.plot(range(1, len(eVals)+1), eVals, marker='.',
+         label='Scree Plot for PCA')
+plt.xlabel('Component Number')
+plt.ylabel('Eigen Values')
+# show the legend
+plt.legend()
+# show the plot
+plt.show()
+
 
 # literal 6: Classification
+# transform train data to PCA, principle axis
+pca_imgVectorsTrain = pca.transform(np.array(imgVectorsTrain))
+print('pca_imgVectorsTrain ', pca_imgVectorsTrain)
 typeDist = 2  # euclidean
 k = 8  # number of neighbours
 # build and train model that uses euclidean distance
@@ -85,9 +103,11 @@ with open(r'data\results\categories.txt', 'w', encoding="utf-8") as f:
 
 # literal 5: Print eigen vector matrix!
 with open(r'data\results\eigenVectMatrix.txt', 'w', encoding="utf-8") as f:
+    eigenVectMatrix = pca.components_
     f.write('Eigen Vector Matrix\n\n')
-    f.write(str(pca.components_.transpose()))
-    f.write(str(pca.components_.transpose().shape()))
+    f.write(str(eigenVectMatrix.transpose()) + '\n')
+    nRows, nCols = pca.components_.transpose().shape
+    f.write(f'Shape is {nRows} {nCols}')
 
 # literal 3: accumulated variance for chosen eigen vectors in 2) literal
 dictAccVariance = {}
@@ -97,13 +117,35 @@ accVariance = 0
 for var in pcaVariance:
     countVar += 1
     accVariance += var
-    dictAccVariance[f'PC{countVar}'+str(countVar)] = accVariance
+    dictAccVariance[f'PC-{countVar}'] = accVariance
 # print results
 strAccVariance = 'Accumulated variance for selected Principle Components\n\n'
 for k, v in dictAccVariance.items():
     strAccVariance += f'{k} -> {v}\n'
 with open(r'data\results\AccVariance.txt', 'w', encoding="utf-8") as f:
     f.write(strAccVariance)
+
+# literal 1: Graph the eigen face of the mean of the initial matrix, before applyin PCA
+meanVect = pca.mean_
+plt.figure('Mean Vector Face')
+plt.subplot(111)
+plt.imshow(meanVect.reshape((imgHeight, imgWidth)), cmap=plt.cm.gray)
+plt.xticks(())
+plt.yticks(())
+plt.show()
+
+# literal 3: Graph all eigen faces for selected principle components
+plt.figure('Eigen Faces')
+graphRows = 8
+graphCols = 10
+for i in range(graphRows * graphCols):
+    plt.subplot(graphRows, graphCols, i + 1)
+    plt.imshow(eigenVectMatrix[i].reshape(
+        (imgHeight, imgWidth)), cmap=plt.cm.gray)
+    # plt.title(f'PC-{i}')
+    plt.xticks(())
+    plt.yticks(())
+plt.show()
 
 # test printings
 print('0\t', pca.components_)
